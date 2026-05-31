@@ -1,0 +1,6 @@
+{
+  "name": "Coffee Shop Landing Page",
+  "description": "Premium modern-minimalist coffee shop landing page prototype with dark aesthetic, interactive menu, cart, and HTML source code viewer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
