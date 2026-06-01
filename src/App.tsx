@@ -18,7 +18,9 @@ import {
   ChevronRight,
   ThumbsUp,
   Sun,
-  Moon
+  Moon,
+  RotateCcw,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MENU_ITEMS } from './data';
@@ -54,11 +56,132 @@ const playTickSound = () => {
   }
 };
 
+function ColdBrewSimulator() {
+  const [progress, setProgress] = useState(78.5);
+  const [isAccelerated, setIsAccelerated] = useState(false);
+  const [hours, setHours] = useState(14.1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(p => {
+        const step = isAccelerated ? 3.5 : 0.06;
+        let next = p + step;
+        if (next >= 100) {
+          next = 0;
+        }
+        const calculatedHours = parseFloat(((next / 100) * 18).toFixed(1));
+        setHours(calculatedHours);
+        return parseFloat(next.toFixed(1));
+      });
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isAccelerated]);
+
+  return (
+    <div className="bg-black/25 border-y border-white/5 py-4 px-5 text-left select-none relative overflow-hidden backdrop-blur-sm">
+      {/* Background soft ambient glow */}
+      <div className="absolute right-0 top-0 w-24 h-24 bg-bronze/5 rounded-full blur-2xl pointer-events-none"></div>
+      
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          {/* Pulsing amber brewing dot */}
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bronze opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-bronze"></span>
+          </span>
+          <span className="text-[10px] tracking-[0.15em] text-bronze uppercase font-semibold font-mono">18H Slow Extract Drip</span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsAccelerated(!isAccelerated);
+          }}
+          className="text-[9px] px-2 py-0.5 rounded border border-bronze/20 hover:border-bronze text-slate-400 hover:text-white transition-all bg-white/5 font-mono uppercase tracking-wider cursor-pointer"
+          title="Accelerate the 18-hour slow steep process to inspect quality"
+        >
+          {isAccelerated ? "⚡ Fast Mode" : "🔬 Live Chamber"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-12 gap-3 items-center">
+        {/* Animated Beaker Icon */}
+        <div className="col-span-3 flex justify-center">
+          <div className="relative w-10 h-10 border border-white/25 rounded-b-xl rounded-t-sm flex flex-col justify-end p-[2px] overflow-hidden bg-charcoal-dark">
+            {/* Neck of beaker */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-1 border-b border-white/20"></div>
+            {/* Drip path */}
+            <div className="absolute top-[4px] left-1/2 -translate-x-1/2 w-[1px] h-4 bg-white/5">
+              {/* Dripping drops using framer-motion */}
+              <motion.div
+                animate={{ y: [0, 18], opacity: [0, 1, 0.8, 0] }}
+                transition={{ repeat: Infinity, duration: isAccelerated ? 0.35 : 1.4, ease: "linear" }}
+                className="w-1.5 h-1.5 bg-bronze rounded-full"
+              />
+            </div>
+            {/* Liquid inside the beaker */}
+            <motion.div 
+              style={{ height: `${progress}%` }}
+              className="w-full bg-gradient-to-t from-bronze-dark/60 to-bronze/30 rounded-b-lg border-t border-bronze/40"
+              animate={isAccelerated ? { y: [0.5, -0.5, 0.5] } : { y: [1, -1, 1] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            />
+            {/* Landing ripple */}
+            <motion.div
+              animate={{ scale: [0.5, 1.5], opacity: [1, 0] }}
+              transition={{ repeat: Infinity, duration: isAccelerated ? 0.35 : 1.4, delay: 0.8 }}
+              className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3 h-1 bg-bronze/30 rounded-full"
+            />
+          </div>
+        </div>
+
+        {/* Detailed Status text + bar */}
+        <div className="col-span-9 flex flex-col justify-center">
+          <div className="flex justify-between text-[11px] font-mono text-slate-400 mb-1">
+            <span>Elapsed: <strong className="text-white font-semibold">{hours} hrs</strong></span>
+            <span className="text-bronze font-bold">{progress}%</span>
+          </div>
+          {/* Progress outer track */}
+          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+            <motion.div 
+              className="h-full bg-gradient-to-r from-bronze-dark to-bronze rounded-full"
+              style={{ width: `${progress}%` }}
+              transition={{ duration: 0.1 }}
+            />
+          </div>
+          <div className="text-[9px] text-slate-500 mt-1.5 font-mono tracking-wider flex justify-between items-center">
+            <span>STEEP: {progress < 40 ? "INFUSION" : progress < 85 ? "FLAVORING" : "MATURED"}</span>
+            <span className="text-bronze-hover animate-pulse font-bold">{isAccelerated ? "SPEED ACTIVE" : "STEEPING..."}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface OrderState {
+  orderId: string;
+  items: CartItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'Received' | 'Preparing' | 'Brewing' | 'Ready';
+  progress: number;
+}
+
 export default function App() {
   // --- States ---
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<OrderState | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kopikala-active-order');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+  const [isOrderStatusOpen, setIsOrderStatusOpen] = useState(false);
+  const [isOrderAccelerated, setIsOrderAccelerated] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'coffee' | 'cold-brew' | 'latte-art'>('all');
   const [bookingFormData, setBookingFormData] = useState<BookingDetails>({
     name: '',
@@ -91,6 +214,65 @@ export default function App() {
     }
     localStorage.setItem('kopikala-theme', theme);
   }, [theme]);
+
+  // Persist Active Order tracking details in local storage
+  useEffect(() => {
+    if (activeOrder) {
+      localStorage.setItem('kopikala-active-order', JSON.stringify(activeOrder));
+    } else {
+      localStorage.removeItem('kopikala-active-order');
+    }
+  }, [activeOrder]);
+
+  // Simulate active order progress updating in waves
+  useEffect(() => {
+    if (!activeOrder) return;
+    if (activeOrder.progress >= 100) return;
+
+    const interval = setInterval(() => {
+      setActiveOrder(prev => {
+        if (!prev) return null;
+        if (prev.progress >= 100) {
+          clearInterval(interval);
+          return prev;
+        }
+
+        const step = isOrderAccelerated ? 8 : 2;
+        const nextProgress = Math.min(prev.progress + step, 100);
+        let nextStatus = prev.status;
+        
+        if (nextProgress < 20) {
+          nextStatus = 'Received';
+        } else if (nextProgress >= 20 && nextProgress < 55) {
+          nextStatus = 'Preparing';
+        } else if (nextProgress >= 55 && nextProgress < 90) {
+          nextStatus = 'Brewing';
+        } else {
+          nextStatus = 'Ready';
+        }
+
+        if (nextStatus !== prev.status) {
+          setTimeout(() => {
+            if (nextStatus === 'Preparing') {
+              showToast("Pesanan diterima! Barista premium kami mulai meracik profil rasa.", "info");
+            } else if (nextStatus === 'Brewing') {
+              showToast("Sedang diseduh! Air bersuhu 92°C menetes perlahan untuk ekstraksi sempurna.", "info");
+            } else if (nextStatus === 'Ready') {
+              showToast("Penyeduhan usai! Kopi Anda siap diambil di counter pelayanan.", "success");
+            }
+          }, 50);
+        }
+
+        return {
+          ...prev,
+          progress: nextProgress,
+          status: nextStatus
+        };
+      });
+    }, isOrderAccelerated ? 300 : 1200);
+
+    return () => clearInterval(interval);
+  }, [activeOrder?.orderId, activeOrder === null, isOrderAccelerated]);
 
   // Track scroll position for header glassmorphism
   useEffect(() => {
@@ -172,6 +354,11 @@ export default function App() {
       return;
     }
 
+    const itemsCopy = [...cart];
+    const sub = cartSubtotal;
+    const tax = cartTax;
+    const tot = cartTotal;
+
     let orderMessage = "Halo Kopi Kala Premium! Saya ingin memesan menu-menu berikut:\n\n";
     cart.forEach((item, index) => {
       orderMessage += `${index + 1}. ${item.menuItem.name} (x${item.quantity}) - Rp ${(item.menuItem.price * item.quantity).toLocaleString('id-ID')}\n`;
@@ -183,7 +370,29 @@ export default function App() {
 
     const encoded = encodeURIComponent(orderMessage);
     const url = `https://wa.me/628123456789?text=${encoded}`;
-    window.open(url, '_blank');
+    
+    try {
+      window.open(url, '_blank');
+    } catch (e) {
+      // Fail-safe
+    }
+
+    const newId = "KPK-" + Math.floor(1000 + Math.random() * 9000);
+    setActiveOrder({
+      orderId: newId,
+      items: itemsCopy,
+      subtotal: sub,
+      tax: tax,
+      total: tot,
+      status: 'Received',
+      progress: 0
+    });
+
+    setCart([]);
+    setIsCartOpen(false);
+    setIsOrderStatusOpen(true);
+    setIsOrderAccelerated(false);
+    showToast(`Pesanan #${newId} dibuat! Memulai pelacakan penyeduhan.`, "success");
   };
 
   const filteredMenuItems = categoryFilter === 'all' 
@@ -228,6 +437,21 @@ export default function App() {
 
             {/* Action buttons (Cart, book table button) */}
             <div className="hidden md:flex items-center gap-5">
+              {/* Active Order Tracker Button */}
+              {activeOrder && (
+                <button 
+                  onClick={() => setIsOrderStatusOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-bronze/10 hover:bg-bronze/25 border border-bronze/30 text-bronze hover:text-white transition-all text-[11px] font-bold tracking-wider uppercase cursor-pointer"
+                  id="active-order-desktop-trigger"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bronze opacity-80"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-bronze"></span>
+                  </span>
+                  <span>Lacak Kopi: {activeOrder.status} ({activeOrder.progress}%)</span>
+                </button>
+              )}
+
               {/* Theme Toggle Button */}
               <button 
                 onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
@@ -271,6 +495,21 @@ export default function App() {
 
             {/* Mobile Actions block */}
             <div className="flex items-center gap-2 md:hidden">
+              {/* Active Mobile Order Tracking Pulse Dot */}
+              {activeOrder && (
+                <button 
+                  onClick={() => setIsOrderStatusOpen(true)}
+                  className="p-2.5 rounded-full text-bronze hover:text-white bg-bronze/10 border border-bronze/30 cursor-pointer flex items-center justify-center"
+                  aria-label="Lacak Pesanan Mandiri"
+                  id="active-order-mobile-trigger"
+                >
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bronze opacity-80"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-bronze flex items-center justify-center text-[8px] text-charcoal-dark font-sans font-black">!</span>
+                  </span>
+                </button>
+              )}
+
               {/* Theme Toggle Button for Mobile */}
               <button 
                 onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
@@ -423,6 +662,7 @@ export default function App() {
                     src="https://images.unsplash.com/photo-1507133750040-4a8f57021571?q=80&w=800&auto=format&fit=crop" 
                     alt="Aesthetic hot coffee" 
                     className="w-full h-[320px] md:h-[450px] object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700"
+                    referrerPolicy="no-referrer"
                   />
                 </div>
                 
@@ -508,8 +748,13 @@ export default function App() {
                         src={product.image} 
                         alt={product.name}
                         className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700" 
+                        referrerPolicy="no-referrer"
                       />
                     </div>
+
+                    {product.category === 'cold-brew' && (
+                      <ColdBrewSimulator />
+                    )}
  
                     {/* Specific details info */}
                     <div className="p-6 pb-2">
@@ -588,6 +833,7 @@ export default function App() {
                     src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800&auto=format&fit=crop" 
                     alt="Cafe ambient decoration" 
                     className="w-full h-[280px] md:h-[400px] object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700"
+                    referrerPolicy="no-referrer"
                   />
                 </div>
                 {/* Visual quote stamp */}
@@ -894,6 +1140,246 @@ export default function App() {
               </motion.div>
             </div>
           </div>
+        )}
+      </AnimatePresence>
+
+
+      {/* --- ORDER STATUS SIDEBAR SHEET --- */}
+      <AnimatePresence>
+        {isOrderStatusOpen && activeOrder && (
+          <div className="fixed inset-0 z-50 overflow-hidden">
+            {/* Soft backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOrderStatusOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+            />
+
+            {/* Sidebar Slider */}
+            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+              <motion.div 
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                className="w-screen max-w-md bg-charcoal-light/95 backdrop-blur-xl border-l border-white/10 flex flex-col justify-between p-6 shadow-2xl overflow-y-auto"
+              >
+                <div>
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-4 bg-bronze rounded-full"></span>
+                      <div>
+                        <h3 className="font-serif text-lg text-white font-bold">Lacak Pesanan</h3>
+                        <p className="text-[10px] font-mono text-bronze tracking-wider uppercase mt-0.5">Order ID: {activeOrder.orderId}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsOrderStatusOpen(false)}
+                      className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-all cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Brew Machine Live Stage Animation */}
+                  <div className="bg-black/20 rounded-xl p-4 border border-white/5 mb-6 text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="relative w-16 h-16 bg-charcoal-dark border border-white/10 rounded-full flex items-center justify-center p-3">
+                        <Coffee className={`w-8 h-8 text-bronze ${activeOrder.status === 'Brewing' ? 'animate-bounce' : activeOrder.status === 'Preparing' ? 'animate-pulse' : ''}`} />
+                        {activeOrder.status !== 'Ready' && (
+                          <div className="absolute border-[2px] border-dashed border-bronze/40 rounded-full top-0 left-0 w-full h-full animate-spin"></div>
+                        )}
+                      </div>
+                    </div>
+                    <h4 className="text-sm font-semibold text-white tracking-wide">
+                      {activeOrder.status === 'Received' && "Pesanan Diterima"}
+                      {activeOrder.status === 'Preparing' && "Mempersiapkan Biji Kopi"}
+                      {activeOrder.status === 'Brewing' && "Proses Penyeduhan Perlahan"}
+                      {activeOrder.status === 'Ready' && "Pesanan Siap Dinikmati!"}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      {activeOrder.status === 'Received' && "Menunggu barista premium kami untuk memvalidasi detail biji pilihan Anda."}
+                      {activeOrder.status === 'Preparing' && "Biji kopi sedang ditimbang & digiling presisi. Air sedang dipanaskan hingga 92°C."}
+                      {activeOrder.status === 'Brewing' && "Air menetes perlahan pada filter. Blooming & ekstraksi sedang berlangsung."}
+                      {activeOrder.status === 'Ready' && "Seduhan siap! Silakan ambil pesanan Anda langsung di counter Kopi Kala."}
+                    </p>
+                  </div>
+
+                  {/* Live Progress Bar with accelerator */}
+                  <div className="space-y-2 mb-6">
+                    <div className="flex justify-between items-center text-xs font-mono">
+                      <span className="text-slate-400">Penyeduhan:</span>
+                      <span className="text-white font-bold">{activeOrder.progress}% Selesai</span>
+                    </div>
+                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <motion.div 
+                        className="h-full bg-gradient-to-r from-bronze-dark to-bronze rounded-full"
+                        style={{ width: `${activeOrder.progress}%` }}
+                        transition={{ duration: 0.2 }}
+                      />
+                    </div>
+                    
+                    {/* Acceleration control */}
+                    <div className="flex justify-between items-center pt-1">
+                      <button
+                        onClick={() => setIsOrderAccelerated(prev => !prev)}
+                        className="text-[9px] px-2.5 py-1 rounded bg-white/5 border border-bronze/20 hover:border-bronze text-slate-400 hover:text-white font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Zap className={`w-3 h-3 text-bronze ${isOrderAccelerated ? 'animate-pulse' : ''}`} />
+                        {isOrderAccelerated ? "⚡ AKSELERASI: AKTIF" : "🔬 LIVE: AKSELERASI BARISTA"}
+                      </button>
+                      <span className="text-[9px] text-slate-500 font-mono">Estimasi: {activeOrder.status === 'Ready' ? "Selesai" : `${Math.ceil((100 - activeOrder.progress) * (isOrderAccelerated ? 0.3 : 1.2))} Detik`}</span>
+                    </div>
+                  </div>
+
+                  {/* High fidelity timeline */}
+                  <div className="space-y-4 mb-6 border-t border-white/5 pt-5">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-300">Timeline Penyeduhan</h4>
+                    
+                    <div className="relative pl-6 space-y-5">
+                      {/* Left bar accent */}
+                      <div className="absolute top-1.5 bottom-1.5 left-2 w-0.5 bg-white/5"></div>
+
+                      {/* Step 1: Received */}
+                      <div className="relative">
+                        <span className={`absolute -left-5.5 top-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                          activeOrder.progress >= 0 ? 'bg-bronze border-bronze text-charcoal-dark' : 'bg-charcoal border-white/10'
+                        }`}>
+                          {activeOrder.progress >= 20 ? '✓' : <span className="w-1.5 h-1.5 bg-bronze rounded-full"></span>}
+                        </span>
+                        <div>
+                          <h5 className={`text-xs font-semibold ${activeOrder.progress >= 0 ? 'text-white' : 'text-slate-500'}`}>1. Pesanan Diterima</h5>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Sistem memvalidasi pesanan & mengirimnya ke bar penyeduhan.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 2: Preparing */}
+                      <div className="relative">
+                        <span className={`absolute -left-5.5 top-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                          activeOrder.progress >= 20 ? 'bg-bronze border-bronze text-charcoal-dark' : 'bg-charcoal border-white/10'
+                        }`}>
+                          {activeOrder.progress >= 55 ? '✓' : activeOrder.progress >= 20 ? <span className="inline-block w-1.5 h-1.5 bg-bronze rounded-full animate-ping"></span> : null}
+                        </span>
+                        <div>
+                          <h5 className={`text-xs font-semibold ${activeOrder.progress >= 20 ? 'text-white' : 'text-slate-500'}`}>2. Persiapan Bahan</h5>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Biji kopi premium digiling halus & air dipanaskan khusus.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Brewing */}
+                      <div className="relative">
+                        <span className={`absolute -left-5.5 top-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                          activeOrder.progress >= 55 ? 'bg-bronze border-bronze text-charcoal-dark' : 'bg-charcoal border-white/10'
+                        }`}>
+                          {activeOrder.progress >= 90 ? '✓' : activeOrder.progress >= 55 ? <span className="inline-block w-1.5 h-1.5 bg-bronze rounded-full animate-ping"></span> : null}
+                        </span>
+                        <div>
+                          <h5 className={`text-xs font-semibold ${activeOrder.progress >= 55 ? 'text-white' : 'text-slate-500'}`}>3. Penyeduhan Aktif</h5>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Proses penuangan air bersuhu tinggi perlahan (Drip Extraction).</p>
+                        </div>
+                      </div>
+
+                      {/* Step 4: Ready */}
+                      <div className="relative">
+                        <span className={`absolute -left-5.5 top-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                          activeOrder.progress >= 100 ? 'bg-bronze border-bronze text-charcoal-dark' : 'bg-charcoal border-white/10'
+                        }`}>
+                          {activeOrder.progress >= 100 ? '✓' : null}
+                        </span>
+                        <div>
+                          <h5 className={`text-xs font-semibold ${activeOrder.progress >= 90 ? 'text-white' : 'text-slate-500'}`}>4. Selesai & Siap Diambil</h5>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-sans">Kopi telah sepenuhnya terekstraksi & siap disajikan di bar counter.</p>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* List of Ordered Items */}
+                  <div className="border-t border-white/5 pt-5">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-300 mb-3">Detail Minuman</h4>
+                    <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                      {activeOrder.items.map(item => (
+                        <div key={item.menuItem.id} className="flex justify-between items-center text-xs bg-black/10 p-2.5 rounded-lg border border-white/5">
+                          <div>
+                            <span className="text-white font-semibold">{item.menuItem.name}</span>
+                            <span className="text-slate-500 text-[10px] font-mono ml-2">x{item.quantity}</span>
+                          </div>
+                          <span className="font-mono text-slate-400">Rp {(item.menuItem.price * item.quantity).toLocaleString('id-ID')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Subtotals & New Order Action footer */}
+                <div className="border-t border-white/5 pt-4 bg-charcoal-card p-4 rounded-xl border border-white/5 mt-5">
+                  <div className="flex justify-between text-xs text-slate-400 mb-2">
+                    <span>Total Pembayaran</span>
+                    <span className="font-mono text-bronze font-bold">Rp {activeOrder.total.toLocaleString('id-ID')}</span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => {
+                      if (activeOrder.progress < 100) {
+                        if (confirm("Apakah Anda yakin ingin membatalkan simulasi pesanan ini?")) {
+                          setActiveOrder(null);
+                          setIsOrderStatusOpen(false);
+                          setIsOrderAccelerated(false);
+                          showToast("Simulasi pelacakan pesanan telah dibatalkan.", "info");
+                        }
+                      } else {
+                        setActiveOrder(null);
+                        setIsOrderStatusOpen(false);
+                        setIsOrderAccelerated(false);
+                        showToast("Pesanan selesai diproses! Selamat menikmati.", "success");
+                      }
+                    }}
+                    className="w-full bg-white/5 hover:bg-bronze hover:text-charcoal-dark border border-white/10 hover:border-bronze font-bold text-[10px] tracking-widest uppercase py-3 rounded-full text-center transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    {activeOrder.progress < 100 ? "BATALKAN SIMULASI" : "TUTUP & PESAN BARU"}
+                  </button>
+                </div>
+
+              </motion.div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+
+      {/* --- PERSISTENT FLOATING LAB ORDER TRACKER BADGE --- */}
+      <AnimatePresence>
+        {activeOrder && !isOrderStatusOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            onClick={() => setIsOrderStatusOpen(true)}
+            className="fixed bottom-6 right-6 z-40 bg-charcoal-card border border-bronze/30 hover:border-bronze text-white p-4 rounded-2xl shadow-2xl cursor-pointer select-none max-w-xs hover:scale-[1.03] transition-all flex items-center gap-3.5"
+            title="Klik untuk melihat detail progres penyeduhan kopi Anda"
+          >
+            <div className="relative w-10.5 h-10.5 bg-bronze/10 rounded-xl flex items-center justify-center text-bronze">
+              <Coffee className={`w-5.5 h-5.5 ${activeOrder.status === 'Brewing' ? 'animate-bounce' : activeOrder.status === 'Preparing' ? 'animate-pulse' : ''}`} />
+              <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-bronze text-charcoal-dark font-sans font-bold text-[9px] rounded-full flex items-center justify-center animate-pulse">!</div>
+            </div>
+            
+            <div className="text-left">
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-[9px] font-mono font-bold tracking-widest text-bronze uppercase">LIVE DRIP SIM</span>
+                <span className="text-[10px] font-mono text-slate-400 font-semibold">{activeOrder.progress}%</span>
+              </div>
+              <h5 className="text-[11px] font-bold text-white mt-0.5 font-semibold">Kopi Anda: {activeOrder.status}</h5>
+              <div className="w-28 h-0.5 bg-white/5 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full bg-bronze" style={{ width: `${activeOrder.progress}%` }}></div>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

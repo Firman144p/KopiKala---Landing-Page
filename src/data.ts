@@ -8,7 +8,7 @@ export const MENU_ITEMS: MenuItem[] = [
     price: 28000,
     priceFormatted: "Rp 28.000",
     description: "Classic rich and heavy-bodied espresso shot extracted with double precision.",
-    image: "https://images.unsplash.com/photo-1510707513156-4627267ef5ee?q=80&w=600&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1510591509382-74346451332a?q=80&w=600&auto=format&fit=crop",
     badge: "Strong",
     rating: 4.8
   },
@@ -19,7 +19,7 @@ export const MENU_ITEMS: MenuItem[] = [
     price: 42000,
     priceFormatted: "Rp 42.000",
     description: "Espresso blended with creamy milk, vanilla syrup, and sweet golden caramel drizzle.",
-    image: "https://images.unsplash.com/photo-1572442388796-11668a67e53f?q=80&w=600&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1534778101976-62847782c213?q=80&w=600&auto=format&fit=crop",
     badge: "Best Seller",
     rating: 4.9
   },
